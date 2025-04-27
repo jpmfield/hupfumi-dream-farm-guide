@@ -10,7 +10,7 @@ const PDFContainerExample = () => {
         Upload, view, and manage your PDF files securely in the cloud.
       </p>
       <p className="text-gray-500 mb-6 text-sm">
-        Note: PDF files are stored in a public Supabase storage bucket. Anyone with the link can access uploaded files.
+        Note: PDF files are stored in a public Supabase storage bucket. This example demonstrates how to integrate with Supabase Storage.
       </p>
       <PDFManager />
     </div>

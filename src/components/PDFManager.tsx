@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, FileText, Trash2, Download, RefreshCcw } from 'lucide-react';
+import { Upload, FileText, Trash2, Download, RefreshCcw, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -14,15 +14,52 @@ const PDFManager = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
+  const [isBucketChecking, setIsBucketChecking] = useState(false);
   const { toast } = useToast();
+
+  const createPdfsBucket = async () => {
+    setIsBucketChecking(true);
+    try {
+      // Try to create the bucket
+      const { error: createError } = await supabase.storage.createBucket('pdfs', {
+        public: true,
+        fileSizeLimit: 10485760, // 10MB
+      });
+      
+      if (createError) {
+        console.error('Error creating bucket:', createError);
+        // If it's not a duplicate error, then it's an actual error
+        if (!createError.message.includes('duplicate')) {
+          throw createError;
+        }
+      }
+      
+      toast({
+        title: "Success",
+        description: "PDF storage bucket is ready to use",
+      });
+      
+      // Refresh the PDF list after bucket creation
+      await fetchPDFs();
+      setError(null);
+    } catch (error: any) {
+      console.error('Error creating PDF bucket:', error);
+      setError(`Failed to create PDF bucket: ${error.message}`);
+      toast({
+        variant: "destructive",
+        title: "Error creating PDF bucket",
+        description: "Please check your Supabase permissions.",
+      });
+    } finally {
+      setIsBucketChecking(false);
+    }
+  };
 
   const fetchPDFs = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('Fetching PDFs from bucket');
-      
       // Check if the bucket exists first
       const { data: buckets, error: bucketError } = await supabase.storage
         .listBuckets();
@@ -34,7 +71,10 @@ const PDFManager = () => {
       const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
       
       if (!pdfBucketExists) {
-        throw new Error("The 'pdfs' bucket does not exist in Supabase");
+        setFiles([]);
+        setIsLoading(false);
+        setError("The 'pdfs' bucket does not exist in Supabase. Click the button below to create it.");
+        return;
       }
       
       // Now list files in the bucket
@@ -48,8 +88,6 @@ const PDFManager = () => {
         console.error('Error details:', error);
         throw error;
       }
-
-      console.log('PDFs fetched:', data);
       
       // If data is null or empty, set empty array but don't throw an error
       if (!data || data.length === 0) {
@@ -135,11 +173,22 @@ const PDFManager = () => {
       await fetchPDFs();
     } catch (error: any) {
       console.error('Error uploading PDF:', error);
-      toast({
-        variant: "destructive",
-        title: "Error uploading PDF",
-        description: error?.message || "Please check your permissions and try again.",
-      });
+      
+      // Check if error is related to missing bucket
+      if (error.message && error.message.includes('bucket') && error.message.toLowerCase().includes('not found')) {
+        setError("The 'pdfs' bucket does not exist. Please create it first.");
+        toast({
+          variant: "destructive",
+          title: "Bucket not found",
+          description: "Please create the PDF bucket first using the button below.",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error uploading PDF",
+          description: error?.message || "Please check your permissions and try again.",
+        });
+      }
     } finally {
       setIsUploading(false);
       // Clear the input field for another upload
@@ -188,7 +237,7 @@ const PDFManager = () => {
             type="file"
             accept=".pdf"
             onChange={handleUpload}
-            disabled={isUploading}
+            disabled={isUploading || error?.includes('bucket does not exist')}
             className="max-w-sm"
           />
           {isUploading && <span className="text-sm text-gray-500 mt-1 block">Uploading...</span>}
@@ -206,18 +255,32 @@ const PDFManager = () => {
 
       {error && (
         <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error</AlertTitle>
           <AlertDescription>
             {error}
             <div className="mt-2">
               <p className="text-sm">
-                Please check your Supabase configuration:
+                {error.includes('bucket does not exist') ? (
+                  <Button 
+                    onClick={createPdfsBucket} 
+                    disabled={isBucketChecking} 
+                    variant="outline"
+                    className="mt-2"
+                  >
+                    {isBucketChecking ? "Creating bucket..." : "Create PDF Bucket"}
+                  </Button>
+                ) : (
+                  <span>
+                    Please check your Supabase configuration:
+                    <ul className="list-disc pl-5 text-sm mt-1">
+                      <li>Verify the "pdfs" bucket exists</li>
+                      <li>Ensure the bucket is public</li>
+                      <li>Check that the proper storage policies are in place</li>
+                    </ul>
+                  </span>
+                )}
               </p>
-              <ul className="list-disc pl-5 text-sm mt-1">
-                <li>Verify the "pdfs" bucket exists</li>
-                <li>Ensure the bucket is public</li>
-                <li>Check that the proper storage policies are in place</li>
-              </ul>
             </div>
           </AlertDescription>
         </Alert>
