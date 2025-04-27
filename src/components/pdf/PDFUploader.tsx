@@ -2,16 +2,14 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PDFUploaderProps {
   onUploadSuccess: () => void;
-  isDisabled: boolean;
 }
 
-const PDFUploader = ({ onUploadSuccess, isDisabled }: PDFUploaderProps) => {
+const PDFUploader = ({ onUploadSuccess }: PDFUploaderProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
@@ -58,20 +56,11 @@ const PDFUploader = ({ onUploadSuccess, isDisabled }: PDFUploaderProps) => {
       onUploadSuccess();
     } catch (error: any) {
       console.error('Error uploading PDF:', error);
-      
-      if (error.message && error.message.includes('bucket') && error.message.toLowerCase().includes('not found')) {
-        toast({
-          variant: "destructive",
-          title: "Bucket not found",
-          description: "Please create the PDF bucket first using the button below.",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error uploading PDF",
-          description: error?.message || "Please check your permissions and try again.",
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: "Error uploading PDF",
+        description: error?.message || "Please check your permissions and try again.",
+      });
     } finally {
       setIsUploading(false);
       if (event.target) {
@@ -87,7 +76,7 @@ const PDFUploader = ({ onUploadSuccess, isDisabled }: PDFUploaderProps) => {
           type="file"
           accept=".pdf"
           onChange={handleUpload}
-          disabled={isUploading || isDisabled}
+          disabled={isUploading}
           className="max-w-sm"
         />
         {isUploading && <span className="text-sm text-gray-500 mt-1 block">Uploading...</span>}

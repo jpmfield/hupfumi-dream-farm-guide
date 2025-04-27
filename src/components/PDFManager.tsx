@@ -6,7 +6,6 @@ import { usePDFManager } from '@/hooks/usePDFManager';
 import PDFUploader from './pdf/PDFUploader';
 import PDFList from './pdf/PDFList';
 import PDFPreview from './pdf/PDFPreview';
-import PDFErrorAlert from './pdf/PDFErrorAlert';
 import { supabase } from '@/integrations/supabase/client';
 
 const PDFManager = () => {
@@ -20,50 +19,66 @@ const PDFManager = () => {
     handleDelete,
   } = usePDFManager();
 
-  const [isCheckingBucket, setIsCheckingBucket] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
-    fetchPDFs();
+    const initializeStorage = async () => {
+      try {
+        // First check if bucket exists
+        const { data: bucket, error: bucketError } = await supabase.storage.getBucket('pdfs');
+        
+        if (bucketError && bucketError.message.includes('does not exist')) {
+          // Create the bucket if it doesn't exist
+          const { data, error: createError } = await supabase.storage.createBucket('pdfs', {
+            public: true,
+            fileSizeLimit: 10485760, // 10MB
+            allowedMimeTypes: ['application/pdf']
+          });
+          
+          if (createError) {
+            console.error("Error creating bucket:", createError);
+            throw createError;
+          }
+          console.log("PDF bucket created successfully");
+        } else if (bucketError) {
+          console.error("Error checking bucket:", bucketError);
+          throw bucketError;
+        }
+        
+        // Fetch PDFs after confirming/creating bucket
+        await fetchPDFs();
+      } catch (error) {
+        console.error("Storage initialization error:", error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeStorage();
   }, [fetchPDFs]);
 
-  const createAndRefresh = async () => {
-    setIsCheckingBucket(true);
-    try {
-      console.log("Creating PDF bucket and refreshing...");
-      // The actual bucket creation is handled in the PDFErrorAlert component
-      await fetchPDFs();
-    } catch (error) {
-      console.error("Error creating/refreshing bucket:", error);
-    } finally {
-      setIsCheckingBucket(false);
-    }
-  };
+  if (isInitializing) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-gray-500">Initializing PDF storage...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col md:flex-row md:items-center gap-4">
-        <PDFUploader 
-          onUploadSuccess={fetchPDFs} 
-          isDisabled={!!error?.includes('bucket does not exist')} 
-        />
+        <PDFUploader onUploadSuccess={fetchPDFs} />
         <Button 
           variant="outline" 
           size="icon"
           onClick={fetchPDFs}
-          disabled={isLoading || isCheckingBucket}
+          disabled={isLoading}
           title="Refresh PDF list"
         >
           <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
-
-      {error && (
-        <PDFErrorAlert 
-          error={error}
-          onCreateBucket={createAndRefresh}
-          isBucketChecking={isCheckingBucket}
-        />
-      )}
 
       {isLoading ? (
         <div className="text-center p-8">
