@@ -1,5 +1,8 @@
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { FileText } from 'lucide-react';
 import FarmHeader from '../components/FarmHeader';
 import ProgressIndicator from '../components/ProgressIndicator';
 import GoalInput from '../components/GoalInput';
@@ -59,6 +62,15 @@ const Index = () => {
           title="Hupfumi-Fields"
           subtitle="Turn Your Farming Goals into Reality"
         />
+        
+        <div className="flex justify-end mb-4">
+          <Link to="/pdf-container">
+            <Button variant="outline" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              PDF Container Demo
+            </Button>
+          </Link>
+        </div>
         
         <ProgressIndicator 
           steps={steps} 
