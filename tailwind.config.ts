@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,25 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Custom farm color palette
+				farm: {
+					'green': {
+						light: '#ECFCCB',
+						DEFAULT: '#84CC16',
+						dark: '#4D7C0F',
+					},
+					'soil': {
+						light: '#FBBF24',
+						DEFAULT: '#92400E',
+						dark: '#7C2D12',
+					},
+					'sky': {
+						light: '#BAE6FD',
+						DEFAULT: '#0EA5E9',
+						dark: '#0369A1',
+					}
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -84,12 +103,43 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+				'pulse-gentle': {
+					'0%, 100%': {
+						opacity: '1',
+					},
+					'50%': {
+						opacity: '0.8',
+					},
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0',
+					},
+					'100%': {
+						opacity: '1',
+					},
+				},
+				'grow': {
+					'0%': {
+						transform: 'scale(0.95)',
+					},
+					'100%': {
+						transform: 'scale(1)',
+					},
+				},
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
-			}
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-gentle': 'pulse-gentle 3s ease-in-out infinite',
+				'fade-in': 'fade-in 0.5s ease-out',
+				'grow': 'grow 0.3s ease-out',
+			},
+			fontFamily: {
+				sans: ['Inter', 'sans-serif'],
+				heading: ['Poppins', 'sans-serif'],
+			},
 		}
 	},
 	plugins: [require("tailwindcss-animate")],
