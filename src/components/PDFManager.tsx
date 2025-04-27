@@ -22,8 +22,18 @@ const PDFManager = () => {
   } = usePDFManager();
 
   useEffect(() => {
-    fetchPDFs();
-  }, [fetchPDFs]);
+    // Attempt to create bucket on component mount if it doesn't exist
+    const initializeStorage = async () => {
+      try {
+        await createPdfsBucket();
+      } catch (error) {
+        console.error("Failed to initialize storage:", error);
+        // The error will be handled by the hook
+      }
+    };
+    
+    initializeStorage();
+  }, [createPdfsBucket]);
 
   return (
     <div className="flex flex-col gap-8">
