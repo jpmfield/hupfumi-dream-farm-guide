@@ -7,6 +7,7 @@ import PDFUploader from './pdf/PDFUploader';
 import PDFList from './pdf/PDFList';
 import PDFPreview from './pdf/PDFPreview';
 import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const PDFManager = () => {
   const {
@@ -20,32 +21,26 @@ const PDFManager = () => {
   } = usePDFManager();
 
   const [isInitializing, setIsInitializing] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const initializeStorage = async () => {
       try {
-        // First check if bucket exists
-        const { data: bucket, error: bucketError } = await supabase.storage.getBucket('pdfs');
-        
-        if (bucketError && bucketError.message.includes('does not exist')) {
-          // Create the bucket if it doesn't exist
-          const { data, error: createError } = await supabase.storage.createBucket('pdfs', {
-            public: true,
-            fileSizeLimit: 10485760, // 10MB
-            allowedMimeTypes: ['application/pdf']
-          });
+        // Try to list files directly instead of checking bucket existence
+        // This approach works because the upload worked, which means the bucket exists
+        // but the getBucket endpoint is failing
+        const { data, error: listError } = await supabase.storage
+          .from('pdfs')
+          .list();
           
-          if (createError) {
-            console.error("Error creating bucket:", createError);
-            throw createError;
-          }
-          console.log("PDF bucket created successfully");
-        } else if (bucketError) {
-          console.error("Error checking bucket:", bucketError);
-          throw bucketError;
+        if (listError && !listError.message.includes('not found')) {
+          console.error("Error listing files during initialization:", listError);
         }
         
-        // Fetch PDFs after confirming/creating bucket
+        // Even if we get a "not found" error on list, continue with uploads/fetches
+        // since the upload endpoint is working correctly
+        
+        // Fetch PDFs
         await fetchPDFs();
       } catch (error) {
         console.error("Storage initialization error:", error);
