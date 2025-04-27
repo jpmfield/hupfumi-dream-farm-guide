@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -39,6 +40,14 @@ export const usePDFManager = () => {
           variant: "destructive",
           title: "Storage bucket not found",
           description: "Please create a 'pdfs' bucket in your Supabase dashboard.",
+        });
+      } else {
+        // Bucket exists, clear any previous errors and fetch PDFs
+        setError(null);
+        await fetchPDFs();
+        toast({
+          title: "Success",
+          description: "PDF storage is ready to use",
         });
       }
     } catch (error: any) {
