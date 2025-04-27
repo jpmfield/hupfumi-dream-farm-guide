@@ -2,16 +2,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Upload, FileText, Trash2, Download } from 'lucide-react';
+import { Upload, FileText, Trash2, Download, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
 
 const PDFManager = () => {
   const [files, setFiles] = useState<{ name: string; url: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchPDFs = useCallback(async () => {
@@ -20,9 +22,27 @@ const PDFManager = () => {
     
     try {
       console.log('Fetching PDFs from bucket');
+      
+      // Check if the bucket exists first
+      const { data: buckets, error: bucketError } = await supabase.storage
+        .listBuckets();
+      
+      if (bucketError) {
+        throw new Error(`Error checking buckets: ${bucketError.message}`);
+      }
+      
+      const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
+      
+      if (!pdfBucketExists) {
+        throw new Error("The 'pdfs' bucket does not exist in Supabase");
+      }
+      
+      // Now list files in the bucket
       const { data, error } = await supabase.storage
         .from('pdfs')
-        .list();
+        .list('', {
+          sortBy: { column: 'name', order: 'asc' },
+        });
 
       if (error) {
         console.error('Error details:', error);
@@ -72,6 +92,16 @@ const PDFManager = () => {
     try {
       const file = event.target.files?.[0];
       if (!file) return;
+
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        toast({
+          variant: "destructive",
+          title: "Invalid file type",
+          description: "Please upload only PDF files.",
+        });
+        return;
+      }
 
       setIsUploading(true);
       
@@ -135,6 +165,10 @@ const PDFManager = () => {
         description: "PDF deleted successfully",
       });
 
+      if (selectedPdf === fileName) {
+        setSelectedPdf(null);
+      }
+
       await fetchPDFs();
     } catch (error: any) {
       console.error('Error deleting PDF:', error);
@@ -148,15 +182,26 @@ const PDFManager = () => {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-4">
-        <Input
-          type="file"
-          accept=".pdf"
-          onChange={handleUpload}
-          disabled={isUploading}
-          className="max-w-sm"
-        />
-        {isUploading && <span className="text-sm text-gray-500">Uploading...</span>}
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex-1">
+          <Input
+            type="file"
+            accept=".pdf"
+            onChange={handleUpload}
+            disabled={isUploading}
+            className="max-w-sm"
+          />
+          {isUploading && <span className="text-sm text-gray-500 mt-1 block">Uploading...</span>}
+        </div>
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={fetchPDFs}
+          disabled={isLoading}
+          title="Refresh PDF list"
+        >
+          <RefreshCcw className="h-4 w-4" />
+        </Button>
       </div>
 
       {error && (
@@ -183,43 +228,46 @@ const PDFManager = () => {
           <p className="text-gray-500">Loading PDFs...</p>
         </div>
       ) : (
-        <>
+        <div className="grid grid-cols-1 gap-8">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {files.map((file) => (
-              <div 
+              <Card
                 key={file.name}
-                className="flex items-center justify-between p-4 border rounded-lg bg-white shadow-sm"
+                className={`p-4 hover:shadow-md transition-shadow ${selectedPdf === file.name ? 'border-blue-500 ring-2 ring-blue-200' : ''}`}
               >
-                <div className="flex items-center gap-3">
-                  <FileText className="w-6 h-6 text-blue-500" />
-                  <a 
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm hover:underline truncate max-w-[200px]"
-                  >
-                    {file.name}
-                  </a>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 truncate">
+                    <FileText className="w-6 h-6 text-blue-500 flex-shrink-0" />
+                    <button
+                      onClick={() => setSelectedPdf(file.name)}
+                      className="text-sm hover:underline truncate max-w-[180px] text-left"
+                      title={file.name}
+                    >
+                      {file.name}
+                    </button>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => window.open(file.url, '_blank')}
+                      className="text-blue-500 hover:text-blue-700"
+                      title="Download PDF"
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(file.name)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Delete PDF"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => window.open(file.url, '_blank')}
-                    className="text-blue-500 hover:text-blue-700"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(file.name)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              </Card>
             ))}
           </div>
 
@@ -227,9 +275,23 @@ const PDFManager = () => {
             <div className="text-center p-8 border-2 border-dashed rounded-lg">
               <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
               <p className="text-gray-500">No PDFs uploaded yet</p>
+              <p className="text-sm text-gray-400 mt-2">Upload a PDF file to get started</p>
             </div>
           )}
-        </>
+
+          {selectedPdf && (
+            <div className="mt-8">
+              <h2 className="text-lg font-semibold mb-4">PDF Preview</h2>
+              <div className="border rounded-lg overflow-hidden">
+                <iframe 
+                  src={files.find(f => f.name === selectedPdf)?.url} 
+                  className="w-full h-[600px]"
+                  title={selectedPdf}
+                />
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
