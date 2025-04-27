@@ -1,5 +1,5 @@
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -10,88 +10,16 @@ export interface PDFFile {
 
 export const usePDFManager = () => {
   const [files, setFiles] = useState<PDFFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
-  const [isBucketChecking, setIsBucketChecking] = useState(false);
-  const [isBucketInitialized, setIsBucketInitialized] = useState(false);
   const { toast } = useToast();
-
-  const createPdfsBucket = useCallback(async () => {
-    if (isBucketInitialized) return;
-    
-    setIsBucketChecking(true);
-    try {
-      console.log('Checking for pdfs bucket...');
-      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
-      
-      if (bucketError) {
-        console.error('Error listing buckets:', bucketError);
-        throw bucketError;
-      }
-      
-      console.log('Available buckets:', buckets?.map(b => b.name));
-      const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
-      
-      console.log('PDF bucket exists:', pdfBucketExists);
-      
-      if (!pdfBucketExists) {
-        console.log('pdfs bucket does not exist');
-        setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
-        toast({
-          variant: "destructive",
-          title: "Storage bucket not found",
-          description: "Please create a 'pdfs' bucket in your Supabase dashboard.",
-        });
-      } else {
-        // Bucket exists, clear any previous errors and fetch PDFs
-        setError(null);
-        await fetchPDFs();
-        toast({
-          title: "Success",
-          description: "PDF storage is ready to use",
-        });
-      }
-      
-      setIsBucketInitialized(true);
-    } catch (error: any) {
-      console.error('Error checking PDF bucket:', error);
-      setError(`Storage error: ${error.message || "Unknown error"}`);
-      toast({
-        variant: "destructive",
-        title: "Storage error",
-        description: "Please check your Supabase configuration.",
-      });
-    } finally {
-      setIsBucketChecking(false);
-    }
-  }, [toast]);
 
   const fetchPDFs = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const { data: buckets, error: bucketError } = await supabase.storage
-        .listBuckets();
-      
-      if (bucketError) {
-        console.error('Error checking buckets:', bucketError);
-        throw new Error(`Error checking buckets: ${bucketError.message}`);
-      }
-      
-      const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
-      
-      if (!pdfBucketExists) {
-        console.log('pdfs bucket does not exist');
-        setFiles([]);
-        setIsLoading(false);
-        setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
-        return;
-      }
-      
-      console.log('pdfs bucket exists, fetching files...');
       const { data, error } = await supabase.storage
         .from('pdfs')
         .list('', {
@@ -104,13 +32,11 @@ export const usePDFManager = () => {
       }
       
       if (!data || data.length === 0) {
-        console.log('No PDF files found');
         setFiles([]);
         setIsLoading(false);
         return;
       }
 
-      console.log('Found PDF files:', data.length);
       const fileUrls = await Promise.all(
         data.map(async (file) => {
           const { data: { publicUrl } } = supabase.storage
@@ -123,7 +49,6 @@ export const usePDFManager = () => {
         })
       );
 
-      console.log('Generated public URLs for files');
       setFiles(fileUrls);
     } catch (error: any) {
       console.error('Error fetching PDFs:', error);
@@ -140,7 +65,6 @@ export const usePDFManager = () => {
 
   const handleDelete = async (fileName: string) => {
     try {
-      console.log('Deleting file:', fileName);
       const { error } = await supabase.storage
         .from('pdfs')
         .remove([fileName]);
@@ -150,7 +74,6 @@ export const usePDFManager = () => {
         throw error;
       }
 
-      console.log('File deleted successfully');
       toast({
         title: "Success",
         description: "PDF deleted successfully",
@@ -176,10 +99,8 @@ export const usePDFManager = () => {
     isLoading,
     error,
     selectedPdf,
-    isBucketChecking,
     setSelectedPdf,
     fetchPDFs,
-    createPdfsBucket,
     handleDelete,
   };
 };

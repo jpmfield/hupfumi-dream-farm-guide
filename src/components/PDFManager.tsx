@@ -14,17 +14,14 @@ const PDFManager = () => {
     isLoading,
     error,
     selectedPdf,
-    isBucketChecking,
     setSelectedPdf,
     fetchPDFs,
-    createPdfsBucket,
     handleDelete,
   } = usePDFManager();
 
   useEffect(() => {
-    // Initialize storage only once when component mounts
-    createPdfsBucket();
-  }, [createPdfsBucket]);
+    fetchPDFs();
+  }, [fetchPDFs]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -47,8 +44,6 @@ const PDFManager = () => {
       {error && (
         <PDFErrorAlert 
           error={error}
-          onCreateBucket={createPdfsBucket}
-          isBucketChecking={isBucketChecking}
         />
       )}
 
