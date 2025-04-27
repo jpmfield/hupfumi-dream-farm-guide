@@ -21,37 +21,37 @@ export const usePDFManager = () => {
     setIsBucketChecking(true);
     try {
       console.log('Attempting to create pdfs bucket...');
-      const { error: createError } = await supabase.storage.createBucket('pdfs', {
-        public: true,
-        fileSizeLimit: 10485760, // 10MB
-      });
       
-      if (createError) {
-        console.error('Error creating bucket:', createError);
-        if (createError.message.includes('duplicate')) {
-          console.log('Bucket already exists, proceeding with fetch');
-        } else {
-          throw createError;
-        }
-      } else {
-        console.log('Bucket created successfully');
+      // First check if the bucket exists
+      const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
+      
+      if (bucketError) {
+        throw bucketError;
       }
       
-      toast({
-        title: "Success",
-        description: "PDF storage bucket is ready to use",
-      });
+      if (buckets?.some(bucket => bucket.name === 'pdfs')) {
+        console.log('Bucket already exists, proceeding with fetch');
+        await fetchPDFs();
+        setError(null);
+        setIsBucketChecking(false);
+        return;
+      }
       
-      // Refresh the PDF list after bucket creation
-      await fetchPDFs();
-      setError(null);
-    } catch (error: any) {
-      console.error('Error creating PDF bucket:', error);
-      setError(`Failed to create PDF bucket: ${error.message}`);
+      // Let the user know they need to create the bucket manually as anonymous users
+      // cannot create buckets due to RLS policies
+      setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
       toast({
         variant: "destructive",
-        title: "Error creating PDF bucket",
-        description: "Please check your Supabase permissions.",
+        title: "Storage bucket not found",
+        description: "Please create a 'pdfs' bucket in your Supabase dashboard.",
+      });
+    } catch (error: any) {
+      console.error('Error creating PDF bucket:', error);
+      setError(`Storage error: ${error.message || "Unknown error"}`);
+      toast({
+        variant: "destructive",
+        title: "Storage error",
+        description: "Please check your Supabase configuration.",
       });
     } finally {
       setIsBucketChecking(false);
@@ -79,7 +79,7 @@ export const usePDFManager = () => {
         console.log('pdfs bucket does not exist');
         setFiles([]);
         setIsLoading(false);
-        setError("The 'pdfs' bucket does not exist in Supabase. Click the button below to create it.");
+        setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
         return;
       }
       

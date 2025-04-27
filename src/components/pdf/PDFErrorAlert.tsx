@@ -19,15 +19,27 @@ const PDFErrorAlert = ({ error, onCreateBucket, isBucketChecking }: PDFErrorAler
         {error}
         <div className="mt-2">
           <p className="text-sm">
-            {error.includes('bucket does not exist') ? (
-              <Button 
-                onClick={onCreateBucket} 
-                disabled={isBucketChecking} 
-                variant="outline"
-                className="mt-2"
-              >
-                {isBucketChecking ? "Creating bucket..." : "Create PDF Bucket"}
-              </Button>
+            {error.includes('pdfs') && error.includes('bucket') ? (
+              <div className="space-y-2">
+                <p>You need to create the PDF bucket in your Supabase dashboard:</p>
+                <ol className="list-decimal pl-5 text-sm">
+                  <li>Go to your Supabase project dashboard</li>
+                  <li>Navigate to Storage in the sidebar</li>
+                  <li>Click "New Bucket"</li>
+                  <li>Name it "pdfs" and check "Public bucket"</li>
+                  <li>Configure RLS policies for access control</li>
+                </ol>
+                {onCreateBucket && (
+                  <Button 
+                    onClick={onCreateBucket} 
+                    disabled={isBucketChecking} 
+                    variant="outline"
+                    className="mt-2"
+                  >
+                    {isBucketChecking ? "Checking..." : "Check again"}
+                  </Button>
+                )}
+              </div>
             ) : (
               <span>
                 Please check your Supabase configuration:
