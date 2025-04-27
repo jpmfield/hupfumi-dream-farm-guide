@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import { usePDFManager } from '@/hooks/usePDFManager';
@@ -7,6 +7,7 @@ import PDFUploader from './pdf/PDFUploader';
 import PDFList from './pdf/PDFList';
 import PDFPreview from './pdf/PDFPreview';
 import PDFErrorAlert from './pdf/PDFErrorAlert';
+import { supabase } from '@/integrations/supabase/client';
 
 const PDFManager = () => {
   const {
@@ -19,9 +20,25 @@ const PDFManager = () => {
     handleDelete,
   } = usePDFManager();
 
+  const [isCheckingBucket, setIsCheckingBucket] = useState(false);
+
   useEffect(() => {
     fetchPDFs();
   }, [fetchPDFs]);
+
+  const checkAndRefresh = async () => {
+    setIsCheckingBucket(true);
+    try {
+      console.log("Testing connection to Supabase storage...");
+      await supabase.storage.getBucket('pdfs');
+      console.log("Successfully connected to 'pdfs' bucket");
+      await fetchPDFs();
+    } catch (error) {
+      console.error("Error checking bucket:", error);
+    } finally {
+      setIsCheckingBucket(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -34,16 +51,18 @@ const PDFManager = () => {
           variant="outline" 
           size="icon"
           onClick={fetchPDFs}
-          disabled={isLoading}
+          disabled={isLoading || isCheckingBucket}
           title="Refresh PDF list"
         >
-          <RefreshCcw className="h-4 w-4" />
+          <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
       {error && (
         <PDFErrorAlert 
           error={error}
+          onCreateBucket={checkAndRefresh}
+          isBucketChecking={isCheckingBucket}
         />
       )}
 
