@@ -13,44 +13,63 @@ interface PDFErrorAlertProps {
 
 const PDFErrorAlert = ({ error, onCreateBucket, isBucketChecking }: PDFErrorAlertProps) => {
   const [bucketStatus, setBucketStatus] = useState<string | null>(null);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const checkBucketExists = async () => {
-    setIsChecking(true);
-    setBucketStatus("Checking bucket status...");
+  const createPDFBucket = async () => {
+    setIsCreating(true);
+    setBucketStatus("Attempting to create bucket...");
     
     try {
-      // Attempt to list a single file to verify bucket access
-      const { data, error: listError } = await supabase.storage
-        .from('pdfs')
-        .list('', { limit: 1 });
+      // Try to create the bucket if it doesn't exist
+      const { data, error: createError } = await supabase.storage.createBucket('pdfs', {
+        public: true,
+        fileSizeLimit: 10485760, // 10MB
+        allowedMimeTypes: ['application/pdf']
+      });
       
-      if (listError) {
-        console.error("Bucket check error:", listError);
-        setBucketStatus(`Error: ${listError.message}`);
+      if (createError) {
+        console.error("Error creating bucket:", createError);
+        setBucketStatus(`Failed to create bucket: ${createError.message}`);
         return;
       }
       
-      // Try to get bucket details
-      const { error: bucketError } = await supabase.storage.getBucket('pdfs');
-      
-      if (bucketError) {
-        console.error("Get bucket error:", bucketError);
-        setBucketStatus(`Bucket error: ${bucketError.message}`);
-        return;
-      }
-      
-      setBucketStatus("✅ Bucket exists and is accessible");
+      setBucketStatus("✅ Bucket created successfully!");
       
       // If onCreateBucket is provided, call it to refresh the parent component
       if (onCreateBucket) {
         onCreateBucket();
       }
     } catch (err: any) {
-      console.error("Unexpected error checking bucket:", err);
+      console.error("Unexpected error creating bucket:", err);
       setBucketStatus(`Unexpected error: ${err.message}`);
     } finally {
-      setIsChecking(false);
+      setIsCreating(false);
+    }
+  };
+
+  const checkBucketExists = async () => {
+    setBucketStatus("Checking bucket status...");
+    
+    try {
+      const { data, error } = await supabase.storage.getBucket('pdfs');
+      
+      if (error) {
+        if (error.message.includes('not found') || error.message.includes('does not exist')) {
+          setBucketStatus("Bucket doesn't exist. You can create it now.");
+        } else {
+          setBucketStatus(`Error checking bucket: ${error.message}`);
+        }
+        return;
+      }
+      
+      setBucketStatus("✅ Bucket exists and is accessible");
+      
+      if (onCreateBucket) {
+        onCreateBucket();
+      }
+    } catch (err: any) {
+      console.error("Unexpected error checking bucket:", err);
+      setBucketStatus(`Unexpected error: ${err.message}`);
     }
   };
 
@@ -58,46 +77,37 @@ const PDFErrorAlert = ({ error, onCreateBucket, isBucketChecking }: PDFErrorAler
     <Alert variant="destructive" className="mb-4">
       <AlertCircle className="h-4 w-4" />
       <AlertTitle>Error</AlertTitle>
-      <AlertDescription>
-        {error}
-        <div className="mt-2">
-          <p className="text-sm">
-            {error.includes('pdfs') && error.includes('bucket') ? (
-              <div className="space-y-2">
-                <p>The system cannot connect to the PDF bucket. This could be due to:</p>
-                <ul className="list-disc pl-5 text-sm">
-                  <li>Network connectivity issues</li>
-                  <li>API key permissions</li>
-                  <li>Bucket access policies</li>
-                </ul>
-                
-                <Button 
-                  onClick={checkBucketExists} 
-                  disabled={isChecking} 
-                  variant="outline"
-                  className="mt-2"
-                >
-                  {isChecking ? "Checking..." : "Diagnose Connection"}
-                </Button>
-                
-                {bucketStatus && (
-                  <div className="mt-2 p-2 bg-slate-800 text-white rounded text-sm">
-                    <pre className="whitespace-pre-wrap">{bucketStatus}</pre>
-                  </div>
-                )}
+      <AlertDescription className="space-y-2">
+        <p>{error}</p>
+        
+        {error.includes('pdfs') && error.includes('bucket') && (
+          <div className="mt-4 space-y-4">
+            <p>It appears the PDF bucket may not exist or is inaccessible.</p>
+            
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={checkBucketExists} 
+                variant="outline"
+              >
+                Check Bucket Status
+              </Button>
+              
+              <Button 
+                onClick={createPDFBucket}
+                disabled={isCreating || isBucketChecking} 
+                variant="secondary"
+              >
+                {isCreating ? "Creating..." : "Create PDF Bucket"}
+              </Button>
+            </div>
+            
+            {bucketStatus && (
+              <div className="mt-2 p-2 bg-slate-800 text-white rounded text-sm">
+                <pre className="whitespace-pre-wrap">{bucketStatus}</pre>
               </div>
-            ) : (
-              <span>
-                Please check your Supabase configuration:
-                <ul className="list-disc pl-5 text-sm mt-1">
-                  <li>Verify the "pdfs" bucket exists</li>
-                  <li>Ensure the bucket is public</li>
-                  <li>Check that the proper storage policies are in place</li>
-                </ul>
-              </span>
             )}
-          </p>
-        </div>
+          </div>
+        )}
       </AlertDescription>
     </Alert>
   );

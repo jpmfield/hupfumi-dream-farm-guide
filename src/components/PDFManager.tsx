@@ -26,15 +26,14 @@ const PDFManager = () => {
     fetchPDFs();
   }, [fetchPDFs]);
 
-  const checkAndRefresh = async () => {
+  const createAndRefresh = async () => {
     setIsCheckingBucket(true);
     try {
-      console.log("Testing connection to Supabase storage...");
-      await supabase.storage.getBucket('pdfs');
-      console.log("Successfully connected to 'pdfs' bucket");
+      console.log("Creating PDF bucket and refreshing...");
+      // The actual bucket creation is handled in the PDFErrorAlert component
       await fetchPDFs();
     } catch (error) {
-      console.error("Error checking bucket:", error);
+      console.error("Error creating/refreshing bucket:", error);
     } finally {
       setIsCheckingBucket(false);
     }
@@ -61,7 +60,7 @@ const PDFManager = () => {
       {error && (
         <PDFErrorAlert 
           error={error}
-          onCreateBucket={checkAndRefresh}
+          onCreateBucket={createAndRefresh}
           isBucketChecking={isCheckingBucket}
         />
       )}
