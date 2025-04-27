@@ -9,7 +9,75 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      farm_scenarios: {
+        Row: {
+          created_at: string | null
+          crops: string
+          existing_buyers: string
+          existing_inputs: string | null
+          harvest_date: string
+          has_plan: boolean | null
+          id: string
+          land_size: string
+          location: string
+          machinery: string | null
+          name: string
+          production_type: string
+          revenue_goal: string
+          start_date: string
+          status: string
+          target_market: string
+          target_production: string
+          updated_at: string | null
+          user_id: string | null
+          workers: string
+        }
+        Insert: {
+          created_at?: string | null
+          crops: string
+          existing_buyers: string
+          existing_inputs?: string | null
+          harvest_date: string
+          has_plan?: boolean | null
+          id?: string
+          land_size: string
+          location: string
+          machinery?: string | null
+          name: string
+          production_type: string
+          revenue_goal: string
+          start_date: string
+          status: string
+          target_market: string
+          target_production: string
+          updated_at?: string | null
+          user_id?: string | null
+          workers: string
+        }
+        Update: {
+          created_at?: string | null
+          crops?: string
+          existing_buyers?: string
+          existing_inputs?: string | null
+          harvest_date?: string
+          has_plan?: boolean | null
+          id?: string
+          land_size?: string
+          location?: string
+          machinery?: string | null
+          name?: string
+          production_type?: string
+          revenue_goal?: string
+          start_date?: string
+          status?: string
+          target_market?: string
+          target_production?: string
+          updated_at?: string | null
+          user_id?: string | null
+          workers?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
