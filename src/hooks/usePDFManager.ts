@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -20,33 +19,30 @@ export const usePDFManager = () => {
   const createPdfsBucket = async () => {
     setIsBucketChecking(true);
     try {
-      console.log('Attempting to create pdfs bucket...');
-      
-      // First check if the bucket exists
+      console.log('Checking for pdfs bucket...');
       const { data: buckets, error: bucketError } = await supabase.storage.listBuckets();
       
       if (bucketError) {
+        console.error('Error listing buckets:', bucketError);
         throw bucketError;
       }
       
-      if (buckets?.some(bucket => bucket.name === 'pdfs')) {
-        console.log('Bucket already exists, proceeding with fetch');
-        await fetchPDFs();
-        setError(null);
-        setIsBucketChecking(false);
-        return;
-      }
+      console.log('Available buckets:', buckets?.map(b => b.name));
+      const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
       
-      // Let the user know they need to create the bucket manually as anonymous users
-      // cannot create buckets due to RLS policies
-      setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
-      toast({
-        variant: "destructive",
-        title: "Storage bucket not found",
-        description: "Please create a 'pdfs' bucket in your Supabase dashboard.",
-      });
+      console.log('PDF bucket exists:', pdfBucketExists);
+      
+      if (!pdfBucketExists) {
+        console.log('pdfs bucket does not exist');
+        setError("The 'pdfs' bucket does not exist. You need to create it through the Supabase dashboard.");
+        toast({
+          variant: "destructive",
+          title: "Storage bucket not found",
+          description: "Please create a 'pdfs' bucket in your Supabase dashboard.",
+        });
+      }
     } catch (error: any) {
-      console.error('Error creating PDF bucket:', error);
+      console.error('Error checking PDF bucket:', error);
       setError(`Storage error: ${error.message || "Unknown error"}`);
       toast({
         variant: "destructive",
