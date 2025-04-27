@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,9 +15,12 @@ export const usePDFManager = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<string | null>(null);
   const [isBucketChecking, setIsBucketChecking] = useState(false);
+  const [isBucketInitialized, setIsBucketInitialized] = useState(false);
   const { toast } = useToast();
 
-  const createPdfsBucket = async () => {
+  const createPdfsBucket = useCallback(async () => {
+    if (isBucketInitialized) return;
+    
     setIsBucketChecking(true);
     try {
       console.log('Checking for pdfs bucket...');
@@ -50,6 +53,8 @@ export const usePDFManager = () => {
           description: "PDF storage is ready to use",
         });
       }
+      
+      setIsBucketInitialized(true);
     } catch (error: any) {
       console.error('Error checking PDF bucket:', error);
       setError(`Storage error: ${error.message || "Unknown error"}`);
@@ -61,14 +66,13 @@ export const usePDFManager = () => {
     } finally {
       setIsBucketChecking(false);
     }
-  };
+  }, [toast]);
 
   const fetchPDFs = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      console.log('Checking if pdfs bucket exists...');
       const { data: buckets, error: bucketError } = await supabase.storage
         .listBuckets();
       
@@ -77,7 +81,6 @@ export const usePDFManager = () => {
         throw new Error(`Error checking buckets: ${bucketError.message}`);
       }
       
-      console.log('Available buckets:', buckets?.map(b => b.name));
       const pdfBucketExists = buckets?.some(bucket => bucket.name === 'pdfs');
       
       if (!pdfBucketExists) {

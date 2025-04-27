@@ -22,12 +22,8 @@ const PDFManager = () => {
   } = usePDFManager();
 
   useEffect(() => {
-    // Check bucket status and fetch PDFs on component mount
-    const initializeStorage = async () => {
-      await createPdfsBucket();
-    };
-    
-    initializeStorage();
+    // Initialize storage only once when component mounts
+    createPdfsBucket();
   }, [createPdfsBucket]);
 
   return (
