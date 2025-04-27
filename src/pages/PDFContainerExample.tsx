@@ -6,6 +6,9 @@ const PDFContainerExample = () => {
   return (
     <div className="container mx-auto p-8">
       <h1 className="text-2xl font-bold mb-4">PDF Storage and Management</h1>
+      <p className="text-gray-600 mb-6">
+        Upload, view, and manage your PDF files securely in the cloud.
+      </p>
       <PDFManager />
     </div>
   );
